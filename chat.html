@@ -5,48 +5,48 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>Wassup - Chat</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      .messages {
+        overflow-y: auto;
+        max-height: calc(100vh - 150px); /* Adjust the height as needed */
+      }
+    </style>
   </head>
   <body>
     <div class="chat-app">
       <!-- Sidebar -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h2>Wassup</h2>
+          <h2>WSG</h2>
+          <button class="add-group-button">+</button>
         </div>
         <ul class="channels chat-list">
-            <!--dynamically adding channels here-->
+          <!--dynamically adding channels here-->
         </ul>
       </aside>
 
       <!-- Main Chat Area -->
       <main class="chat-main">
         <header class="chat-header">
-          <h2># General</h2>
+          <h2># Start a chat...</h2>
         </header>
-        <div class="messages" id="messages-container">
-          <div class="message">
-            <span class="username">John:</span>
-            <span class="text">Hey everyone!</span>
-          </div>
-          <div class="message">
-            <span class="username">Alice:</span>
-            <span class="text">Hello John!</span>
-          </div>
-        </div>
-        <form id="message-form" class="message-form">
+        <div class="messages" id="messages-container"></div>
+
+        <div id="message-form" class="message-form">
           <input
             type="text"
             id="message-input"
-            placeholder="Type your message..."
-            required
+            placeholder="Enter your message..."
           />
-          <button type="submit">Send</button>
-        </form>
+          <button id="send-message">Send</button>
+        </div>
       </main>
 
       <!-- User List -->
       <aside class="user-list">
-        <h3>Online Users</h3>
+        <div class="user-list-header">
+          <h3>Online Users</h3>
+        </div>
         <ul>
           <!-- User list will be populated dynamically -->
         </ul>

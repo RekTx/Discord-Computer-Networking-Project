@@ -121,11 +121,15 @@ wss.on("connection", (ws) => {
 
       case "signal":
         // Forward signaling data to the target peer
-        const targetPeer = peers.get(data.targetId);
+        console.log(
+          `Signal sent from ${username} to ${data.target}:`,
+          data.payload
+        );
+        const targetPeer = peers.get(data.target);
         if (targetPeer) {
           console.log(
-            `Message sent from ${username} to ${data.targetId}:`,
-            data.payload.message
+            `Message sent from ${username} to ${data.target}:`,
+            data.payload
           );
           targetPeer.send(
             JSON.stringify({
@@ -164,6 +168,24 @@ wss.on("connection", (ws) => {
           );
         }
 
+        break;
+
+      case "chatMessage":
+        // Forward chat message to the target peer
+        const target = peers.get(data.to);
+        if (target) {
+          target.send(
+            JSON.stringify({
+              type: "chatMessage",
+              from: username,
+              message: data.message,
+            })
+          );
+        } else {
+          ws.send(
+            JSON.stringify({ type: "error", message: "Target peer not found" })
+          );
+        }
         break;
 
       case "disconnect":

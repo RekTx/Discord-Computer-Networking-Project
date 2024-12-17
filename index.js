@@ -10,22 +10,23 @@ let mainWindow;
 let ws;
 let currentUsername = "";
 
-function createWindow() {
-  mainWindow = new BrowserWindow({
+function createWindow(file, preload) {
+  const win = new BrowserWindow({
     width: 1024,
     height: 768,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"), // If you have preload.js
-      nodeIntegration: true, // Enable Node.js features (if needed)
+      preload: path.join(__dirname, preload),
+      nodeIntegration: true,
     },
   });
 
-  mainWindow.loadFile("index.html");
-  mainWindow.setMenuBarVisibility(false);
+  win.loadFile(file);
+  win.setMenuBarVisibility(false);
+  return win;
 }
 
 app.whenReady().then(() => {
-  createWindow();
+  mainWindow = createWindow("index.html", "preload-index.js");
 
   // Create WebSocket connection
   ws = new WebSocket("ws://localhost:8081");
@@ -54,8 +55,24 @@ app.whenReady().then(() => {
         // adding the channel to the chat list
         mainWindow.webContents.send("add-channel", message.from);
       }
-      //currTargetPeer = message.from;
-      //mainWindow.webContents.send("update-chat", currChannels.get(message.from));
+      currTargetPeer = message.from;
+      mainWindow.webContents.send(
+        "update-chat",
+        currChannels.get(message.from)
+      );
+    } else if (message.type === "signal") {
+      console.log(`Received message from peer: ${message.from}`);
+      if (currChannels.has(message.from)) {
+        currChannels.get(message.from).push({
+          from: message.from,
+          text: message.payload,
+        });
+        mainWindow.webContents.send(
+          "update-chat",
+          currChannels.get(message.from)
+        );
+      }
+      mainWindow.webContents.send("chat-message", message);
     }
   };
 });
@@ -75,7 +92,9 @@ app.on("activate", () => {
 
 ipcMain.on("login-success", (event, username) => {
   currentUsername = username;
-  mainWindow.loadFile("chat.html");
+  const chatWindow = createWindow("chat.html", "preload-chat.js");
+  mainWindow.close();
+  mainWindow = chatWindow;
   mainWindow.setMenuBarVisibility(false);
 });
 
@@ -123,7 +142,6 @@ ipcMain.handle("get-peers", async () => {
   }
 });
 
-
 ipcMain.on("start-chat", (event, peer) => {
   if (!currChannels.has(peer)) {
     let messages = [
@@ -153,4 +171,35 @@ ipcMain.on("switch-channel", (event, peer) => {
   currTargetPeer = peer;
   console.log(`Switching to chat with peer: ${peer}`);
   mainWindow.webContents.send("update-chat", currChannels.get(peer));
+});
+
+ipcMain.on("send-chat-message", (event, message) => {
+  console.log("Sending message: ", message);
+  console.log("Current target peer: ", currTargetPeer);
+  if (ws.readyState === WebSocket.OPEN && currTargetPeer) {
+    console.log("sending message websocket");
+    ws.send(
+      JSON.stringify({
+        type: "signal",
+        target: currTargetPeer,
+        payload: message,
+      })
+    );
+    console.log("message sent");
+    // Add the message to the current channel
+    if (currChannels.has(currTargetPeer)) {
+      currChannels.get(currTargetPeer).push({
+        from: currentUsername,
+        text: message,
+      });
+      mainWindow.webContents.send(
+        "update-chat",
+        currChannels.get(currTargetPeer)
+      );
+    }
+  }
+});
+
+ipcMain.on("add-channel", (event, peer) => {
+  mainWindow.webContents.send("add-channel", peer);
 });
