@@ -1,0 +1,60 @@
+<!DOCTYPE html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Wassup - Chat</title>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="chat-app">
+      <!-- Sidebar -->
+      <aside class="sidebar">
+        <div class="sidebar-header">
+          <h2>Wassup</h2>
+        </div>
+        <ul class="channels">
+          <li class="channel selected"># General</li>
+          <li class="channel"># Random</li>
+          <li class="channel"># Help</li>
+        </ul>
+      </aside>
+
+      <!-- Main Chat Area -->
+      <main class="chat-main">
+        <header class="chat-header">
+          <h2># General</h2>
+        </header>
+        <div class="messages" id="messages-container">
+          <div class="message">
+            <span class="username">John:</span>
+            <span class="text">Hey everyone!</span>
+          </div>
+          <div class="message">
+            <span class="username">Alice:</span>
+            <span class="text">Hello John!</span>
+          </div>
+        </div>
+        <form id="message-form" class="message-form">
+          <input
+            type="text"
+            id="message-input"
+            placeholder="Type your message..."
+            required
+          />
+          <button type="submit">Send</button>
+        </form>
+      </main>
+
+      <!-- User List -->
+      <aside class="user-list">
+        <h3>Online Users</h3>
+        <ul>
+          <li>John</li>
+          <li>Alice</li>
+          <li>Bob</li>
+        </ul>
+      </aside>
+    </div>
+  </body>
+</html>
