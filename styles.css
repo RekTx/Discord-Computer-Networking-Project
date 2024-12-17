@@ -249,3 +249,25 @@ body {
 .user-list .chat-button:hover {
   background: #1a5cb8;
 }
+
+/* Chat List */
+.chat-list {
+  list-style: none;
+  padding: 0;
+  margin: 0;
+}
+
+.chat-list .channel {
+  padding: 1rem;
+  cursor: pointer;
+  transition: background 0.2s ease;
+}
+
+.chat-list .channel:hover {
+  background: #444;
+}
+
+.chat-list .channel.selected {
+  background: #575757;
+  font-weight: bold;
+}

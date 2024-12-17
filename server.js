@@ -151,6 +151,21 @@ wss.on("connection", (ws) => {
         );
         break;
 
+      case "requestChat":
+        // Forward chat request to the target peer
+        const tPeer = peers.get(data.to);
+        if (tPeer) {
+          console.log(`Chat request from ${username} to ${data.to}`);
+          tPeer.send(
+            JSON.stringify({
+              type: "chatRequest",
+              from: username,
+            })
+          );
+        }
+
+        break;
+
       case "disconnect":
         // Handle peer disconnection
         if (username) {

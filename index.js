@@ -4,9 +4,11 @@ const { spawn } = require("child_process");
 const WebSocket = require("ws");
 
 const currChannels = new Map();
+let currTargetPeer = "";
 
 let mainWindow;
 let ws;
+let currentUsername = "";
 
 function createWindow() {
   mainWindow = new BrowserWindow({
@@ -38,6 +40,22 @@ app.whenReady().then(() => {
       console.log(`Welcome ${message.id}`);
     } else if (message.type === "peersList") {
       mainWindow.webContents.send("update-peers", message.peers);
+    } else if (message.type === "chatRequest") {
+      console.log(`Chat started with peer: ${message.from}`);
+      if (!currChannels.has(message.from)) {
+        let messages = [
+          {
+            from: "Server",
+            text: "Connected to peer: " + message.from,
+          },
+        ];
+        currChannels.set(message.from, messages);
+
+        // adding the channel to the chat list
+        mainWindow.webContents.send("add-channel", message.from);
+      }
+      //currTargetPeer = message.from;
+      //mainWindow.webContents.send("update-chat", currChannels.get(message.from));
     }
   };
 });
@@ -56,6 +74,7 @@ app.on("activate", () => {
 });
 
 ipcMain.on("login-success", (event, username) => {
+  currentUsername = username;
   mainWindow.loadFile("chat.html");
   mainWindow.setMenuBarVisibility(false);
 });
@@ -72,6 +91,10 @@ ipcMain.handle("send-username", (event, username) => {
   } else {
     return { success: false };
   }
+});
+
+ipcMain.handle("get-username", () => {
+  return currentUsername;
 });
 
 ipcMain.handle("get-websocket", () => {
@@ -98,4 +121,36 @@ ipcMain.handle("get-peers", async () => {
   } else {
     return [];
   }
+});
+
+
+ipcMain.on("start-chat", (event, peer) => {
+  if (!currChannels.has(peer)) {
+    let messages = [
+      {
+        from: "Server",
+        text: "Connected to peer: " + peer,
+      },
+    ];
+    currChannels.set(peer, messages);
+    currTargetPeer = peer;
+
+    // sending a message to the peer to start the chat
+    ws.send(
+      JSON.stringify({
+        type: "requestChat",
+        from: currentUsername,
+        to: peer,
+      })
+    );
+
+    console.log(`Starting chat with peer: ${peer}`);
+  }
+  mainWindow.webContents.send("update-chat", currChannels.get(peer));
+});
+
+ipcMain.on("switch-channel", (event, peer) => {
+  currTargetPeer = peer;
+  console.log(`Switching to chat with peer: ${peer}`);
+  mainWindow.webContents.send("update-chat", currChannels.get(peer));
 });
