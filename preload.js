@@ -1,19 +1,4 @@
 const { ipcRenderer } = require("electron");
-// const WebSocket = require("ws");
-// const ws = new WebSocket("ws://localhost:8081"); // Connect to the signaling server
-
-// Wait for the WebSocket to open
-// ws.onopen = () => {
-//   console.log("Connected to the server");
-// };
-
-// Handle messages from the server
-// ws.onmessage = (event) => {
-//   const message = JSON.parse(event.data);
-//   if (message.type === "welcome") {
-//     console.log(`Welcome ${message.id}`);
-//   }
-// };
 
 window.addEventListener("DOMContentLoaded", () => {
   const loginForm = document.getElementById("login-form");
@@ -37,14 +22,33 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 });
 
-ipcRenderer.invoke("get-peers").then((peers) => {
-  console.log("Peers on the server: ", peers.keys());
-
-  const userList = document.querySelector(".user-list ul");
+const userList = document.querySelector(".user-list ul");
+function updatePeersList(peers) {
   userList.innerHTML = "";
   peers.forEach((peer) => {
     const li = document.createElement("li");
     li.textContent = peer;
+
+    const chatButton = document.createElement("button");
+    chatButton.textContent = "Chat";
+    chatButton.classList.add("chat-button");
+    chatButton.setAttribute("data-peer", peer);
+
+    chatButton.addEventListener("click", () => {
+      console.log(`Chatting with peer: ${peer}`);
+    });
+
+    li.appendChild(chatButton);
     userList.appendChild(li);
   });
+}
+
+ipcRenderer.invoke("get-peers").then((peers) => {
+  console.log("Peers on the server: ", peers.keys());
+  updatePeersList(peers);
+});
+
+// Listen for updates to the peers list
+ipcRenderer.on("update-peers", (event, peers) => {
+  updatePeersList(peers);
 });

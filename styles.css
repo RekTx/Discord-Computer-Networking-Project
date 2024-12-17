@@ -229,5 +229,23 @@ body {
 }
 
 .user-list li {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
   margin-bottom: 0.5rem;
+}
+
+.user-list .chat-button {
+  padding: 0.25rem 0.5rem;
+  font-size: 0.8rem;
+  background: #2575fc;
+  color: white;
+  border: none;
+  border-radius: 3px;
+  cursor: pointer;
+  transition: background 0.3s ease;
+}
+
+.user-list .chat-button:hover {
+  background: #1a5cb8;
 }

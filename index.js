@@ -3,6 +3,8 @@ const path = require("path");
 const { spawn } = require("child_process");
 const WebSocket = require("ws");
 
+const currChannels = new Map();
+
 let mainWindow;
 let ws;
 
@@ -34,6 +36,8 @@ app.whenReady().then(() => {
     const message = JSON.parse(event.data);
     if (message.type === "welcome") {
       console.log(`Welcome ${message.id}`);
+    } else if (message.type === "peersList") {
+      mainWindow.webContents.send("update-peers", message.peers);
     }
   };
 });
@@ -75,20 +79,21 @@ ipcMain.handle("get-websocket", () => {
 });
 
 ipcMain.handle("get-peers", async () => {
-  console.log("get-peers");
   if (ws.readyState === WebSocket.OPEN) {
-    console.log("get-peers, websocket open");
     ws.send(JSON.stringify({ type: "getPeers" }));
-    console.log("get-peers, ws.send");
+
     return new Promise((resolve) => {
-      ws.onmessage = (event) => {
-        console.log("get-peers, onmessage");
+      const handleMessage = (event) => {
         const message = JSON.parse(event.data);
         if (message.type === "peersList") {
-          console.log("Peers on the server: ", peers.keys());
           resolve(message.peers);
+          ws.removeEventListener("message", handleMessage); // Clean up the event listener
+        } else {
+          resolve([]); // Return an empty array if the message type is not "peersList"
         }
       };
+
+      ws.addEventListener("message", handleMessage);
     });
   } else {
     return [];

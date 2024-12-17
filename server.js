@@ -12,6 +12,16 @@ const groups = new Map();
 
 console.log("Server is running on ws://localhost:8081");
 
+function broadcastPeersList() {
+  const peersList = JSON.stringify({
+    type: "peersList",
+    peers: Array.from(peers.keys()),
+  });
+  peers.forEach((peer) => {
+    peer.send(peersList);
+  });
+}
+
 // Handle WebSocket connections
 wss.on("connection", (ws) => {
   let username = null;
@@ -36,6 +46,13 @@ wss.on("connection", (ws) => {
           // Save the peer with its username
           peers.set(username, ws);
           console.log(`Peer registered with username: ${username}`);
+          broadcastPeersList(); // Broadcast updated peers list
+          ws.send(
+            JSON.stringify({
+              type: "peersList",
+              peers: Array.from(peers.keys()),
+            })
+          );
           ws.send(JSON.stringify({ type: "welcome", id: username }));
         }
         break;
@@ -124,10 +141,21 @@ wss.on("connection", (ws) => {
         }
         break;
 
+      case "getPeers":
+        // Send the list of connected peers to the requester
+        ws.send(
+          JSON.stringify({
+            type: "peersList",
+            peers: Array.from(peers.keys()),
+          })
+        );
+        break;
+
       case "disconnect":
         // Handle peer disconnection
         if (username) {
           peers.delete(username);
+          broadcastPeersList(); // Broadcast updated peers list
           console.log(`Peer disconnected: ${username}`);
         }
         break;
@@ -142,6 +170,7 @@ wss.on("connection", (ws) => {
       console.log("Peers on the server: ", peers.keys());
 
       peers.delete(username);
+      broadcastPeersList(); // Broadcast updated peers list
 
       // Remove the peer from all groups
       for (const [groupName, members] of groups.entries()) {
