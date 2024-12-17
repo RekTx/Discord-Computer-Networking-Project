@@ -2,6 +2,7 @@
 const WebSocket = require("ws");
 const fs = require("fs");
 const path = require("path");
+const { group } = require("console");
 
 // Create a WebSocket server on port 8081
 const wss = new WebSocket.Server({ port: 8081 });
@@ -33,6 +34,7 @@ function notifyGroupMembers(groupName, members) {
         JSON.stringify({
           type: "groupCreated",
           groupName: groupChannelName,
+          groupMembers: members,
         })
       );
     }
@@ -134,16 +136,18 @@ wss.on("connection", (ws) => {
               `Message sent to group '${target}' by '${username}': ${payload}`
             );
             groupMembers.forEach((member) => {
-              const memberSocket = peers.get(member);
-              if (memberSocket) {
-                memberSocket.send(
-                  JSON.stringify({
-                    type: "groupMessage",
-                    groupName: target,
-                    from: username,
-                    message: payload,
-                  })
-                );
+              if (member !== username) {
+                const memberSocket = peers.get(member);
+                if (memberSocket) {
+                  memberSocket.send(
+                    JSON.stringify({
+                      type: "groupMessage",
+                      groupName: target,
+                      from: username,
+                      message: payload,
+                    })
+                  );
+                }
               }
             });
           } else {

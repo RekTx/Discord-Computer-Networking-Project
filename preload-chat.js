@@ -30,20 +30,48 @@ function updateChatMessages(messages) {
   const messagesContainer = document.getElementById("messages-container");
   messagesContainer.innerHTML = "";
   messages.forEach((message) => {
-    const messageDiv = document.createElement("div");
-    messageDiv.classList.add("message");
+    if (message.fileName) {
 
-    const usernameSpan = document.createElement("span");
-    usernameSpan.classList.add("username");
-    usernameSpan.textContent = `${message.from}:`;
+      const messageDiv = document.createElement("div");
+      messageDiv.classList.add("message");
 
-    const textSpan = document.createElement("span");
-    textSpan.classList.add("text");
-    textSpan.textContent = message.text;
+      const usernameSpan = document.createElement("span");
+      usernameSpan.classList.add("username");
+      usernameSpan.textContent = `${message.from}:`;
 
-    messageDiv.appendChild(usernameSpan);
-    messageDiv.appendChild(textSpan);
-    messagesContainer.appendChild(messageDiv);
+      const fileLink = document.createElement("span");
+      fileLink.classList.add("text");
+      fileLink.textContent = message.fileName;
+      fileLink.style.cursor = "pointer";
+      fileLink.addEventListener("click", () => {
+        const acceptFile = confirm(
+          `Do you want to accept the file: ${message.fileName}?`
+        );
+        if (acceptFile) {
+          ipcRenderer.send("accept-file", message.fileName, message.from);
+        }
+      });
+
+      messageDiv.appendChild(usernameSpan);
+      messageDiv.appendChild(fileLink);
+      messagesContainer.appendChild(messageDiv);
+
+    } else {
+      const messageDiv = document.createElement("div");
+      messageDiv.classList.add("message");
+
+      const usernameSpan = document.createElement("span");
+      usernameSpan.classList.add("username");
+      usernameSpan.textContent = `${message.from}:`;
+
+      const textSpan = document.createElement("span");
+      textSpan.classList.add("text");
+      textSpan.textContent = message.text;
+
+      messageDiv.appendChild(usernameSpan);
+      messageDiv.appendChild(textSpan);
+      messagesContainer.appendChild(messageDiv);
+    }
   });
   messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to the bottom
 }
@@ -99,7 +127,9 @@ ipcRenderer.on("fileReceived", (event, message) => {
   fileLink.textContent = message.fileName;
   fileLink.style.cursor = "pointer";
   fileLink.addEventListener("click", () => {
-    const acceptFile = confirm(`Do you want to accept the file: ${message.fileName}?`);
+    const acceptFile = confirm(
+      `Do you want to accept the file: ${message.fileName}?`
+    );
     if (acceptFile) {
       ipcRenderer.send("accept-file", message.fileName, message.from);
     }
@@ -134,6 +164,7 @@ window.addEventListener("DOMContentLoaded", () => {
             fileName: file.name,
             fileContent: fileContent,
           });
+          selectedFilesContainer.innerHTML = ""; // Clear selected files container
         };
         reader.readAsDataURL(file);
       } else {
@@ -175,24 +206,30 @@ window.addEventListener("DOMContentLoaded", () => {
     }
   });
 
-  ipcRenderer.on("chat-message", (event, message) => {
-    const messagesContainer = document.getElementById("messages-container");
-    const messageDiv = document.createElement("div");
-    messageDiv.classList.add("message");
+  // ipcRenderer.on("chat-message", (event, message) => {
+  //   const messagesContainer = document.getElementById("messages-container");
+  //   const messageDiv = document.createElement("div");
+  //   messageDiv.classList.add("message");
 
-    const usernameSpan = document.createElement("span");
-    usernameSpan.classList.add("username");
-    usernameSpan.textContent = `${message.from}:`;
+  //   const usernameSpan = document.createElement("span");
+  //   usernameSpan.classList.add("username");
+  //   usernameSpan.textContent = `${message.from}:`;
 
-    const textSpan = document.createElement("span");
-    textSpan.classList.add("text");
-    textSpan.textContent = message.message;
+  //   const textSpan = document.createElement("span");
+  //   textSpan.classList.add("text");
+  //   textSpan.textContent = message.message;
 
-    messageDiv.appendChild(usernameSpan);
-    messageDiv.appendChild(textSpan);
-    messagesContainer.appendChild(messageDiv);
-    messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to the bottom
-  });
+  //   messageDiv.appendChild(usernameSpan);
+  //   messageDiv.appendChild(textSpan);
+  //   messagesContainer.appendChild(messageDiv);
+  //   messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to the bottom
+
+  //   // // Refresh chat messages
+  //   // ipcRenderer.invoke("get-chat-messages", currentChannel).then((messages) => {
+  //   //   updateChatMessages(messages);
+  //   // });
+  // });
+
   ipcRenderer.invoke("get-peers").then((peers) => {
     updatePeersList(peers);
   });
@@ -218,6 +255,11 @@ window.addEventListener("DOMContentLoaded", () => {
       });
       chatList.appendChild(channel);
     }
+
+    // Switch to the newly created group channel
+
+    //ipcRenderer.send("switch-channel", groupChannelName);
+    //updateChatHeader(groupChannelName);
   });
 
   ipcRenderer.on("switch-channel", (event, peer) => {

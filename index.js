@@ -56,11 +56,11 @@ app.whenReady().then(() => {
         // adding the channel to the chat list
         mainWindow.webContents.send("add-channel", message.from);
       }
-      currTargetPeer = message.from;
-      mainWindow.webContents.send(
-        "update-chat",
-        currChannels.get(message.from)
-      );
+      //currTargetPeer = message.from;
+      // mainWindow.webContents.send(
+      //   "update-chat",
+      //   currChannels.get(message.from)
+      // );
     } else if (message.type === "signal") {
       console.log(`Received message from peer: ${message.from}`);
       if (currChannels.has(message.from)) {
@@ -68,29 +68,49 @@ app.whenReady().then(() => {
           from: message.from,
           text: message.payload,
         });
-        mainWindow.webContents.send(
-          "update-chat",
-          currChannels.get(message.from)
-        );
+
+        if (currTargetPeer === message.from) {
+          mainWindow.webContents.send(
+            "update-chat",
+            currChannels.get(message.from)
+          );
+        }
       }
-      mainWindow.webContents.send("chat-message", message);
+      //mainWindow.webContents.send("chat-message", message);
     } else if (message.type === "groupCreated") {
       const groupChannelName = message.groupName;
+      if (!currChannels.has(groupChannelName)) {
+        // add a message to the group channel saying it was created with names of members
+        let messages = [
+          {
+            from: "Server",
+            text:
+              "Group created: " +
+              groupChannelName +
+              " with members: " +
+              message.groupMembers.join(", "),
+          },
+        ];
+        currChannels.set(groupChannelName, messages);
+      }
       mainWindow.webContents.send("groupCreated", groupChannelName);
     } else if (message.type === "groupMessage") {
       console.log(`Received group message from peer: ${message.from}`);
-      const groupChannelName = `group: ${message.groupName}`;
+      const groupChannelName = message.groupName;
       if (currChannels.has(groupChannelName)) {
         currChannels.get(groupChannelName).push({
           from: message.from,
           text: message.message,
         });
-        mainWindow.webContents.send(
-          "update-chat",
-          currChannels.get(groupChannelName)
-        );
+
+        if (currTargetPeer === groupChannelName) {
+          mainWindow.webContents.send(
+            "update-chat",
+            currChannels.get(groupChannelName)
+          );
+        }
       }
-      mainWindow.webContents.send("chat-message", message);
+      //mainWindow.webContents.send("chat-message", message);
     } else if (message.type === "fileReceived") {
       console.log(`Received file from peer: ${message.from}`);
       const file = {
@@ -98,6 +118,7 @@ app.whenReady().then(() => {
         fileContent: message.fileContent,
         from: message.from,
       };
+
       mainWindow.webContents.send("fileReceived", file);
     } else if (message.type === "fileContent") {
       console.log(`Received file content from peer: ${message.from}`);
@@ -278,6 +299,30 @@ ipcMain.on("create-group", (event, group) => {
         selectedPeers: group.sPeers,
       })
     );
+
+    // Add the group to currChannels
+    if (!currChannels.has(group.groupName)) {
+      let messages = [
+        {
+          from: "Server",
+          text:
+            "New " +
+            group.groupName +
+            " with members: " +
+            group.sPeers.join(", "),
+        },
+      ];
+      currChannels.set(group.groupName, messages);
+
+      // setting the channel as the current channel
+      // currTargetPeer = group.groupName;
+      // mainWindow.webContents.send(
+      //   "update-chat",
+      //   currChannels.get(group.groupName)
+      // );
+    }
+
+    //mainWindow.webContents.send("groupCreated", groupChannelName);
   }
 });
 
