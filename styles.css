@@ -482,6 +482,10 @@ close-file-modal:hover,
   overflow: auto;
 }
 
+.file-preview-content pre {
+  color: #000; /* Change the color of preview text to black */
+}
+
 .file-preview-close {
   color: #aaa;
   float: right;
@@ -499,4 +503,20 @@ close-file-modal:hover,
 .file-preview-content span,
 .modal-content h2 {
   color: #000; /* Change the color to black */
+}
+
+.file-preview-cancel {
+  background-color: #ff914d;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  cursor: pointer;
+  padding: 10px;
+  margin-top: 10px;
+  transition: background 0.3s ease;
+  float: right; /* Move to the right side */
+}
+
+.file-preview-cancel:hover {
+  background-color: #ff672c;
 }

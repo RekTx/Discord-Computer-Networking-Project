@@ -112,7 +112,36 @@ app.whenReady().then(() => {
       }
       //mainWindow.webContents.send("chat-message", message);
     } else if (message.type === "fileReceived") {
+      // if (currChannels.has(message.from)) {
+      //   currChannels.get(message.from).push({
+      //     from: message.from,
+      //     text: message.fileName,
+      //     fileContent: message.fileContent,
+      //   });
+
+      //   if (currTargetPeer === message.from) {
+      //     mainWindow.webContents.send(
+      //       "update-chat",
+      //       currChannels.get(message.from)
+      //     );
+      //   }
+      // }
+
       console.log(`Received file from peer: ${message.from}`);
+
+      // currChannels.get(message.from).push({
+      //   from: message.from,
+      //   text: message.fileName,
+      //   fileContent: message.fileContent,
+      // });
+
+      // if (currTargetPeer === message.from) {
+      //   mainWindow.webContents.send(
+      //     "update-chat",
+      //     currChannels.get(message.from)
+      //   );
+      // }
+
       const file = {
         fileName: message.fileName,
         fileContent: message.fileContent,

@@ -240,8 +240,23 @@ wss.on("connection", (ws) => {
 
           fs.writeFileSync(filePath, fileContent, "base64");
 
-          if (peers.has(target)) {
-            console.log("Sending file to peer: ", target);
+          if (groups.has(target)) {
+            const groupMembers = groups.get(target);
+            groupMembers.forEach((member) => {
+              if (member !== username) {
+                const memberSocket = peers.get(member);
+                if (memberSocket) {
+                  memberSocket.send(
+                    JSON.stringify({
+                      type: "fileReceived",
+                      from: username,
+                      fileName: fileName,
+                    })
+                  );
+                }
+              }
+            });
+          } else if (peers.has(target)) {
             peers.get(target).send(
               JSON.stringify({
                 type: "fileReceived",

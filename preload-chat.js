@@ -30,32 +30,29 @@ function updateChatMessages(messages) {
   const messagesContainer = document.getElementById("messages-container");
   messagesContainer.innerHTML = "";
   messages.forEach((message) => {
-    if (message.fileName) {
-
-      const messageDiv = document.createElement("div");
-      messageDiv.classList.add("message");
-
-      const usernameSpan = document.createElement("span");
-      usernameSpan.classList.add("username");
-      usernameSpan.textContent = `${message.from}:`;
-
-      const fileLink = document.createElement("span");
-      fileLink.classList.add("text");
-      fileLink.textContent = message.fileName;
-      fileLink.style.cursor = "pointer";
-      fileLink.addEventListener("click", () => {
-        const acceptFile = confirm(
-          `Do you want to accept the file: ${message.fileName}?`
-        );
-        if (acceptFile) {
-          ipcRenderer.send("accept-file", message.fileName, message.from);
-        }
-      });
-
-      messageDiv.appendChild(usernameSpan);
-      messageDiv.appendChild(fileLink);
-      messagesContainer.appendChild(messageDiv);
-
+    if (message.fileContent) {
+      // const messagesContainer = document.getElementById("messages-container");
+      // const messageDiv = document.createElement("div");
+      // messageDiv.classList.add("message");
+      // const usernameSpan = document.createElement("span");
+      // usernameSpan.classList.add("username");
+      // usernameSpan.textContent = `${message.from}:`;
+      // const fileLink = document.createElement("span");
+      // fileLink.classList.add("text");
+      // fileLink.textContent = message.text;
+      // fileLink.style.cursor = "pointer";
+      // fileLink.addEventListener("click", () => {
+      //   const acceptFile = confirm(
+      //     `Do you want to accept the file: ${message.text}?`
+      //   );
+      //   if (acceptFile) {
+      //     ipcRenderer.send("accept-file", message.text, message.from);
+      //   }
+      // });
+      // messageDiv.appendChild(usernameSpan);
+      // messageDiv.appendChild(fileLink);
+      // messagesContainer.appendChild(messageDiv);
+      // messagesContainer.scrollTop = messagesContainer.scrollHeight;
     } else {
       const messageDiv = document.createElement("div");
       messageDiv.classList.add("message");
@@ -105,7 +102,15 @@ function handleFilePreview(fileName, fileContent) {
     filePreviewModal.style.display = "none";
   });
 
+  const cancelButton = document.createElement("button");
+  cancelButton.textContent = "Cancel";
+  cancelButton.classList.add("file-preview-cancel");
+  cancelButton.addEventListener("click", () => {
+    filePreviewModal.style.display = "none";
+  });
+
   filePreviewContent.appendChild(saveButton);
+  filePreviewContent.appendChild(cancelButton);
   filePreviewModal.style.display = "block";
 }
 
