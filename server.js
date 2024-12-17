@@ -23,13 +23,14 @@ function broadcastPeersList() {
 }
 
 function notifyGroupMembers(groupName, members) {
+  const groupChannelName = groupName;
   members.forEach((member) => {
     const memberSocket = peers.get(member);
     if (memberSocket) {
       memberSocket.send(
         JSON.stringify({
           type: "groupCreated",
-          groupName,
+          groupName: groupChannelName,
         })
       );
     }
@@ -76,6 +77,8 @@ wss.on("connection", (ws) => {
         console.log(`Creating group with data:`, data);
         const { groupName, selectedPeers } = data;
 
+        //groupName = `group: ${groupName}`; // Prefix group name with "group:"
+
         console.log(
           `Creating group '${groupName}' with members:`,
           selectedPeers
@@ -104,42 +107,48 @@ wss.on("connection", (ws) => {
 
       case "sendMessageToGroup":
         // Send a message to all members of the specified group
-        const { targetGroup, message: groupMessage } = data;
-        if (groups.has(targetGroup)) {
-          const groupMembers = groups.get(targetGroup);
+        {
+          const { target, payload } = data;
 
-          // Check if the sender is part of the group
-          if (!groupMembers.includes(username)) {
-            ws.send(
-              JSON.stringify({
-                type: "error",
-                message: "You are not a member of this group",
-              })
-            );
-            return;
-          }
+          console.log(`target: ${target}, message: ${payload}`);
 
-          console.log(
-            `Message sent to group '${targetGroup}' by '${username}': ${groupMessage}`
-          );
-          groupMembers.forEach((member) => {
-            const memberSocket = peers.get(member);
-            if (memberSocket && member !== username) {
-              // Exclude sender
-              memberSocket.send(
+          if (groups.has(target)) {
+            console.log("group exists");
+
+            const groupMembers = groups.get(target);
+
+            // Check if the sender is part of the group
+            if (!groupMembers.includes(username)) {
+              ws.send(
                 JSON.stringify({
-                  type: "groupMessage",
-                  groupName: targetGroup,
-                  from: username,
-                  message: groupMessage,
+                  type: "error",
+                  message: "You are not a member of this group",
                 })
               );
+              return;
             }
-          });
-        } else {
-          ws.send(
-            JSON.stringify({ type: "error", message: "Group not found" })
-          );
+
+            console.log(
+              `Message sent to group '${target}' by '${username}': ${payload}`
+            );
+            groupMembers.forEach((member) => {
+              const memberSocket = peers.get(member);
+              if (memberSocket) {
+                memberSocket.send(
+                  JSON.stringify({
+                    type: "groupMessage",
+                    groupName: target,
+                    from: username,
+                    message: payload,
+                  })
+                );
+              }
+            });
+          } else {
+            ws.send(
+              JSON.stringify({ type: "error", message: "Group not found" })
+            );
+          }
         }
         break;
 

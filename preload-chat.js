@@ -1,6 +1,8 @@
 console.log("preload-chat.js loaded");
 const { ipcRenderer } = require("electron");
 
+let currentChannel = "";
+
 function updatePeersList(peers) {
   const userList = document.querySelector(".user-list ul");
   userList.innerHTML = "";
@@ -49,6 +51,7 @@ function updateChatMessages(messages) {
 function updateChatHeader(peer) {
   const chatHeader = document.querySelector(".chat-header h2");
   chatHeader.textContent = `- ${peer}`;
+  currentChannel = peer;
 }
 
 window.addEventListener("DOMContentLoaded", () => {
@@ -121,20 +124,25 @@ window.addEventListener("DOMContentLoaded", () => {
 
   ipcRenderer.on("groupCreated", (event, groupName) => {
     const chatList = document.querySelector(".chat-list");
+    const groupChannelName = groupName;
     const existingChannel = Array.from(chatList.children).find(
-      (channel) => channel.textContent === groupName
+      (channel) => channel.textContent === groupChannelName
     );
 
     if (!existingChannel) {
       const channel = document.createElement("li");
-      channel.textContent = groupName;
+      channel.textContent = groupChannelName;
       channel.classList.add("channel");
       channel.addEventListener("click", () => {
-        ipcRenderer.send("switch-channel", groupName);
-        updateChatHeader(groupName); // Update chat header when switching channels
+        ipcRenderer.send("switch-channel", groupChannelName);
+        updateChatHeader(groupChannelName); // Update chat header when switching channels
       });
       chatList.appendChild(channel);
     }
+  });
+
+  ipcRenderer.on("switch-channel", (event, peer) => {
+    updateChatHeader(peer);
   });
 
   const addGroupButton = document.querySelector(".add-group-button");
@@ -158,7 +166,7 @@ window.addEventListener("DOMContentLoaded", () => {
   });
 
   createGroupButton.addEventListener("click", () => {
-    const groupName = document.getElementById("group-name").value;
+    const groupName = `group: ${document.getElementById("group-name").value}`;
     const selectedPeers = Array.from(
       document.querySelectorAll("#peers-list input[type='checkbox']:checked")
     ).map((checkbox) => checkbox.value);

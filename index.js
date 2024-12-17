@@ -74,7 +74,22 @@ app.whenReady().then(() => {
       }
       mainWindow.webContents.send("chat-message", message);
     } else if (message.type === "groupCreated") {
-      mainWindow.webContents.send("groupCreated", message.groupName);
+      const groupChannelName = message.groupName;
+      mainWindow.webContents.send("groupCreated", groupChannelName);
+    } else if (message.type === "groupMessage") {
+      console.log(`Received group message from peer: ${message.from}`);
+      const groupChannelName = `group: ${message.groupName}`;
+      if (currChannels.has(groupChannelName)) {
+        currChannels.get(groupChannelName).push({
+          from: message.from,
+          text: message.message,
+        });
+        mainWindow.webContents.send(
+          "update-chat",
+          currChannels.get(groupChannelName)
+        );
+      }
+      mainWindow.webContents.send("chat-message", message);
     }
   };
 });
@@ -179,15 +194,26 @@ ipcMain.on("send-chat-message", (event, message) => {
   console.log("Sending message: ", message);
   console.log("Current target peer: ", currTargetPeer);
   if (ws.readyState === WebSocket.OPEN && currTargetPeer) {
-    console.log("sending message websocket");
+    
+    const isGroup = currTargetPeer.startsWith("group: ");
+    let tempType = "signal";
+
+    if (isGroup) {
+      tempType = "sendMessageToGroup";
+    }
+
     ws.send(
       JSON.stringify({
-        type: "signal",
+        type: tempType,
         target: currTargetPeer,
         payload: message,
       })
     );
-    console.log("message sent");
+
+    console.log("message sent with type: ", tempType);
+    console.log("message sent to: ", currTargetPeer);
+    console.log("message sent with payload: ", message);
+
     // Add the message to the current channel
     if (currChannels.has(currTargetPeer)) {
       currChannels.get(currTargetPeer).push({
