@@ -1,14 +1,17 @@
 const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
-const { spawn } = require("child_process");
 const WebSocket = require("ws");
 const fs = require("fs");
 
+// username, messages
 const currChannels = new Map();
-let currTargetPeer = "";
+
+let currTargetPeer;
 
 let mainWindow;
 let ws;
+let primaryws;
+let backupws;
 let currentUsername = "";
 
 function createWindow(file, preload) {
@@ -26,10 +29,29 @@ function createWindow(file, preload) {
   return win;
 }
 
+function encryptMessage(message, key) {
+  let encrypted = "";
+  for (let i = 0; i < message.length; i++) {
+    encrypted += String.fromCharCode(
+      message.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+    );
+  }
+  return encrypted;
+}
+
+function decryptMessage(encryptedMessage, key) {
+  let decrypted = "";
+  for (let i = 0; i < encryptedMessage.length; i++) {
+    decrypted += String.fromCharCode(
+      encryptedMessage.charCodeAt(i) ^ key.charCodeAt(i % key.length)
+    );
+  }
+  return decrypted;
+}
+
 app.whenReady().then(() => {
   mainWindow = createWindow("index.html", "preload-index.js");
 
-  // Create WebSocket connection
   ws = new WebSocket("ws://localhost:8081");
 
   ws.onopen = () => {
@@ -56,17 +78,15 @@ app.whenReady().then(() => {
         // adding the channel to the chat list
         mainWindow.webContents.send("add-channel", message.from);
       }
-      //currTargetPeer = message.from;
-      // mainWindow.webContents.send(
-      //   "update-chat",
-      //   currChannels.get(message.from)
-      // );
     } else if (message.type === "signal") {
-      console.log(`Received message from peer: ${message.from}`);
+      const decryptedPayload = decryptMessage(message.payload, message.from);
+      console.log(
+        `Received message from peer: ${message.from} with encrypted payload: ${message.payload} and is decrypted to: ${decryptedPayload}`
+      );
       if (currChannels.has(message.from)) {
         currChannels.get(message.from).push({
           from: message.from,
-          text: message.payload,
+          text: decryptedPayload,
         });
 
         if (currTargetPeer === message.from) {
@@ -95,12 +115,15 @@ app.whenReady().then(() => {
       }
       mainWindow.webContents.send("groupCreated", groupChannelName);
     } else if (message.type === "groupMessage") {
-      console.log(`Received group message from peer: ${message.from}`);
+      const decryptedMessage = decryptMessage(message.message, message.from);
+      console.log(
+        `Received group message from peer: ${message.from} in group: ${message.groupName} with encrypted payload: ${message.message} and is decrypted to: ${decryptedMessage}`
+      );
       const groupChannelName = message.groupName;
       if (currChannels.has(groupChannelName)) {
         currChannels.get(groupChannelName).push({
           from: message.from,
-          text: message.message,
+          text: decryptedMessage,
         });
 
         if (currTargetPeer === groupChannelName) {
@@ -112,36 +135,7 @@ app.whenReady().then(() => {
       }
       //mainWindow.webContents.send("chat-message", message);
     } else if (message.type === "fileReceived") {
-      // if (currChannels.has(message.from)) {
-      //   currChannels.get(message.from).push({
-      //     from: message.from,
-      //     text: message.fileName,
-      //     fileContent: message.fileContent,
-      //   });
-
-      //   if (currTargetPeer === message.from) {
-      //     mainWindow.webContents.send(
-      //       "update-chat",
-      //       currChannels.get(message.from)
-      //     );
-      //   }
-      // }
-
       console.log(`Received file from peer: ${message.from}`);
-
-      // currChannels.get(message.from).push({
-      //   from: message.from,
-      //   text: message.fileName,
-      //   fileContent: message.fileContent,
-      // });
-
-      // if (currTargetPeer === message.from) {
-      //   mainWindow.webContents.send(
-      //     "update-chat",
-      //     currChannels.get(message.from)
-      //   );
-      // }
-
       const file = {
         fileName: message.fileName,
         fileContent: message.fileContent,
@@ -156,6 +150,63 @@ app.whenReady().then(() => {
         fileContent: message.fileContent,
       };
       mainWindow.webContents.send("fileContent", file);
+    } else if (message.type === "deleteMessage") {
+      if (message.target.startsWith("group: ")) {
+        console.log(
+          `Received delete message from peer: ${message.from} text: ${message.messageText}`
+        );
+        if (currChannels.has(message.target)) {
+          const messages = currChannels.get(message.target);
+          const index = messages.findIndex(
+            (msg) => msg.text === message.messageText
+          );
+          if (index !== -1) {
+            messages.splice(index, 1);
+            mainWindow.webContents.send("update-chat", messages);
+          }
+        }
+      } else {
+        console.log(
+          `Received delete message from peer: ${message.from} text: ${message.messageText}`
+        );
+        if (currChannels.has(message.from)) {
+          const messages = currChannels.get(message.from);
+          const index = messages.findIndex(
+            (msg) => msg.text === message.messageText
+          );
+          if (index !== -1) {
+            messages.splice(index, 1);
+            mainWindow.webContents.send("update-chat", messages);
+          }
+        }
+      }
+      //mainWindow.webContents.send("delete-message", message);
+    } else if (message.type === "editMessage") {
+      if (message.target.startsWith("group: ")) {
+        console.log(
+          `Received edit message from peer: ${message.from} new text: ${message.newMessageText}`
+        );
+        if (currChannels.has(message.target)) {
+          const messages = currChannels.get(message.target);
+          const msg = messages[message.messageId];
+          if (msg) {
+            msg.text = message.newMessageText;
+            mainWindow.webContents.send("update-chat", messages);
+          }
+        }
+      } else {
+        console.log(
+          `Received edit message from peer: ${message.from} new text: ${message.newMessageText}`
+        );
+        if (currChannels.has(message.from)) {
+          const messages = currChannels.get(message.from);
+          const msg = messages[message.messageId];
+          if (msg) {
+            msg.text = message.newMessageText;
+            mainWindow.webContents.send("update-chat", messages);
+          }
+        }
+      }
     }
   };
 });
@@ -280,8 +331,6 @@ ipcMain.on("send-chat-message", (event, message, file) => {
       );
     }
   } else {
-    console.log("Sending message: ", message);
-    console.log("Current target peer: ", currTargetPeer);
     if (ws.readyState === WebSocket.OPEN && currTargetPeer) {
       const isGroup = currTargetPeer.startsWith("group: ");
       let tempType = "signal";
@@ -290,17 +339,19 @@ ipcMain.on("send-chat-message", (event, message, file) => {
         tempType = "sendMessageToGroup";
       }
 
+      const encryptedMessage = encryptMessage(message, currentUsername);
+
       ws.send(
         JSON.stringify({
           type: tempType,
           target: currTargetPeer,
-          payload: message,
+          payload: encryptedMessage,
         })
       );
 
-      console.log("message sent with type: ", tempType);
-      console.log("message sent to: ", currTargetPeer);
-      console.log("message sent with payload: ", message);
+      console.log(
+        `message sent to ${currTargetPeer} with encrypted payload: ${encryptedMessage}`
+      );
 
       // Add the message to the current channel
       if (currChannels.has(currTargetPeer)) {
@@ -342,13 +393,6 @@ ipcMain.on("create-group", (event, group) => {
         },
       ];
       currChannels.set(group.groupName, messages);
-
-      // setting the channel as the current channel
-      // currTargetPeer = group.groupName;
-      // mainWindow.webContents.send(
-      //   "update-chat",
-      //   currChannels.get(group.groupName)
-      // );
     }
 
     //mainWindow.webContents.send("groupCreated", groupChannelName);
@@ -396,4 +440,92 @@ ipcMain.on("accept-file", (event, fileName, from) => {
       from: from,
     })
   );
+});
+
+ipcMain.on("delete-message", (event, target, messageText, messageID) => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "deleteMessage",
+        target: target,
+        messageId: messageID,
+        username: currentUsername,
+        messageText: messageText,
+      })
+    );
+
+    // Remove the message from the current channel
+    if (currChannels.has(target)) {
+      const messages = currChannels.get(target);
+      messages.splice(messageID, 1);
+      mainWindow.webContents.send("update-chat", messages);
+    }
+  }
+});
+
+ipcMain.on("edit-message", (event, target, messageID, newMessageText) => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "editMessage",
+        target: target,
+        messageId: messageID,
+        username: currentUsername,
+        newMessageText: newMessageText,
+      })
+    );
+
+    // Update the message in the current channel
+    if (currChannels.has(target)) {
+      const messages = currChannels.get(target);
+      const message = messages[messageID];
+      if (message) {
+        message.text = newMessageText;
+        mainWindow.webContents.send("update-chat", messages);
+      }
+    }
+  }
+});
+
+ipcMain.handle("request-otp", (event, email) => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "requestOTP",
+        email: email,
+      })
+    );
+    return { success: true };
+  } else {
+    return { success: false };
+  }
+});
+
+ipcMain.handle("verify-otp", (event, email, otp) => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "verifyOTP",
+        email: email,
+        otp: otp,
+      })
+    );
+
+    return new Promise((resolve) => {
+      const handleMessage = (event) => {
+        const message = JSON.parse(event.data);
+        if (message.type === "otpVerified") {
+          resolve({ success: true });
+          ws.removeEventListener("message", handleMessage);
+        } else if (message.type === "otpError") {
+          resolve({ success: false });
+          ws.removeEventListener("message", handleMessage);
+        }
+      };
+
+      ws.addEventListener("message", handleMessage);
+    });
+  } else {
+    return { success: false };
+  }
 });

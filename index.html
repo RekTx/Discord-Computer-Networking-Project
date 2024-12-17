@@ -3,13 +3,27 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Wassup - Login</title>
+    <title>Bak Bak - Login</title>
     <link rel="stylesheet" href="styles.css" />
+    <style>
+      .popup {
+        position: fixed;
+        bottom: 20px;
+        left: 50%;
+        transform: translateX(-50%);
+        background-color: #f44336;
+        color: white;
+        padding: 10px;
+        border-radius: 5px;
+        box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+        z-index: 1000;
+      }
+    </style>
   </head>
   <body>
     <div class="login-container">
       <div class="login-box">
-        <h1>Wassup</h1>
+        <h1>Bak Bak</h1>
         <form id="login-form">
           <input
             type="text"
@@ -17,12 +31,25 @@
             placeholder="Enter your username"
             required
           />
+          <input
+            type="email"
+            id="email"
+            name="email"
+            placeholder="Enter your email"
+            required
+          />
+          <input
+            type="text"
+            id="otp"
+            name="otp"
+            placeholder="Enter OTP"
+            required
+          />
+          <button type="button" id="send-otp-button">Send OTP</button>
+          <button type="button" id="verify-button">Verify</button>
           <button type="submit">Login</button>
         </form>
       </div>
     </div>
-
-    <!-- <script src="renderer.js"></script> -->
-    <!-- Link to renderer.js -->
   </body>
 </html>

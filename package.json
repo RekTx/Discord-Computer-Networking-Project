@@ -11,6 +11,8 @@
   "description": "",
   "dependencies": {
     "electron": "^33.2.1",
+    "express": "^4.21.2",
+    "nodemailer": "^6.9.16",
     "ws": "^8.18.0"
   }
 }

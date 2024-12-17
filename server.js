@@ -3,6 +3,7 @@ const WebSocket = require("ws");
 const fs = require("fs");
 const path = require("path");
 const { group } = require("console");
+const nodemailer = require("nodemailer");
 
 // Create a WebSocket server on port 8081
 const wss = new WebSocket.Server({ port: 8081 });
@@ -13,7 +14,35 @@ const peers = new Map();
 // Store groups (key: group name, value: array of usernames)
 const groups = new Map();
 
+const otps = new Map(); // Store OTPs (key: email, value: OTP)
+
 console.log("Server is running on ws://localhost:8081");
+
+// Configure nodemailer
+const transporter = nodemailer.createTransport({
+  service: "gmail",
+  auth: {
+    user: "hashkiller1214@gmail.com",
+    pass: "invi ffjs anxh zvly",
+  },
+});
+
+function sendOTP(email, otp) {
+  const mailOptions = {
+    from: "hashkiller1214@gmail.com",
+    to: email,
+    subject: "Your OTP for Bak Bak",
+    text: `Your OTP is ${otp}`,
+  };
+
+  transporter.sendMail(mailOptions, (error, info) => {
+    if (error) {
+      console.log("Error sending OTP:", error);
+    } else {
+      console.log("OTP sent:", info.response);
+    }
+  });
+}
 
 function broadcastPeersList() {
   const peersList = JSON.stringify({
@@ -39,6 +68,70 @@ function notifyGroupMembers(groupName, members) {
       );
     }
   });
+}
+
+function broadcastDeleteMessage(target, messageId, username, messageText) {
+  if (groups.has(target)) {
+    const groupMembers = groups.get(target);
+    groupMembers.forEach((member) => {
+      if (member !== username) {
+        const memberSocket = peers.get(member);
+        if (memberSocket) {
+          memberSocket.send(
+            JSON.stringify({
+              type: "deleteMessage",
+              target: target,
+              messageId: messageId,
+              from: username,
+              messageText: messageText,
+            })
+          );
+        }
+      }
+    });
+  } else if (peers.has(target)) {
+    peers.get(target).send(
+      JSON.stringify({
+        type: "deleteMessage",
+        target: target,
+        messageId: messageId,
+        from: username,
+        messageText: messageText,
+      })
+    );
+  }
+}
+
+function broadcastEditMessage(target, messageId, username, newMessageText) {
+  if (groups.has(target)) {
+    const groupMembers = groups.get(target);
+    groupMembers.forEach((member) => {
+      if (member !== username) {
+        const memberSocket = peers.get(member);
+        if (memberSocket) {
+          memberSocket.send(
+            JSON.stringify({
+              type: "editMessage",
+              target: target,
+              messageId: messageId,
+              from: username,
+              newMessageText: newMessageText,
+            })
+          );
+        }
+      }
+    });
+  } else if (peers.has(target)) {
+    peers.get(target).send(
+      JSON.stringify({
+        type: "editMessage",
+        target: target,
+        messageId: messageId,
+        from: username,
+        newMessageText: newMessageText,
+      })
+    );
+  }
 }
 
 // Handle WebSocket connections
@@ -166,10 +259,6 @@ wss.on("connection", (ws) => {
         );
         const targetPeer = peers.get(data.target);
         if (targetPeer) {
-          console.log(
-            `Message sent from ${username} to ${data.target}:`,
-            data.payload
-          );
           targetPeer.send(
             JSON.stringify({
               type: "signal",
@@ -287,6 +376,45 @@ wss.on("connection", (ws) => {
               );
             }
           }
+        }
+        break;
+
+      case "deleteMessage":
+        {
+          const { target, messageId, username, messageText } = data;
+          console.log(`Delete message request received: ${messageId}`);
+          console.log(`Target: ${target}`);
+          console.log(`Username: ${username}`);
+          console.log(`Message text: ${messageText}`);
+          broadcastDeleteMessage(target, messageId, username, messageText);
+        }
+        break;
+
+      case "editMessage":
+        {
+          const { target, messageId, username, newMessageText } = data;
+          console.log(`Edit message request received: ${messageId}`);
+          console.log(`Target: ${target}`);
+          console.log(`Username: ${username}`);
+          console.log(`New message text: ${newMessageText}`);
+          broadcastEditMessage(target, messageId, username, newMessageText);
+        }
+        break;
+
+      case "requestOTP":
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        otps.set(data.email, otp);
+        sendOTP(data.email, otp);
+        ws.send(JSON.stringify({ type: "otpSent" }));
+        break;
+
+      case "verifyOTP":
+        const storedOtp = otps.get(data.email);
+        if (storedOtp && storedOtp === data.otp) {
+          otps.delete(data.email);
+          ws.send(JSON.stringify({ type: "otpVerified" }));
+        } else {
+          ws.send(JSON.stringify({ type: "otpError", message: "Invalid OTP" }));
         }
         break;
 

@@ -2,6 +2,7 @@ console.log("preload-chat.js loaded");
 const { ipcRenderer } = require("electron");
 
 let currentChannel = "";
+let currentUsername = ""; // Add this line to define currentUsername
 
 function updatePeersList(peers) {
   const userList = document.querySelector(".user-list ul");
@@ -29,33 +30,12 @@ function updatePeersList(peers) {
 function updateChatMessages(messages) {
   const messagesContainer = document.getElementById("messages-container");
   messagesContainer.innerHTML = "";
-  messages.forEach((message) => {
+  messages.forEach((message, index) => {
     if (message.fileContent) {
-      // const messagesContainer = document.getElementById("messages-container");
-      // const messageDiv = document.createElement("div");
-      // messageDiv.classList.add("message");
-      // const usernameSpan = document.createElement("span");
-      // usernameSpan.classList.add("username");
-      // usernameSpan.textContent = `${message.from}:`;
-      // const fileLink = document.createElement("span");
-      // fileLink.classList.add("text");
-      // fileLink.textContent = message.text;
-      // fileLink.style.cursor = "pointer";
-      // fileLink.addEventListener("click", () => {
-      //   const acceptFile = confirm(
-      //     `Do you want to accept the file: ${message.text}?`
-      //   );
-      //   if (acceptFile) {
-      //     ipcRenderer.send("accept-file", message.text, message.from);
-      //   }
-      // });
-      // messageDiv.appendChild(usernameSpan);
-      // messageDiv.appendChild(fileLink);
-      // messagesContainer.appendChild(messageDiv);
-      // messagesContainer.scrollTop = messagesContainer.scrollHeight;
     } else {
       const messageDiv = document.createElement("div");
       messageDiv.classList.add("message");
+      messageDiv.id = `message-${index}`;
 
       const usernameSpan = document.createElement("span");
       usernameSpan.classList.add("username");
@@ -64,6 +44,13 @@ function updateChatMessages(messages) {
       const textSpan = document.createElement("span");
       textSpan.classList.add("text");
       textSpan.textContent = message.text;
+
+      if (message.from === currentUsername) {
+        messageDiv.addEventListener("contextmenu", (event) => {
+          event.preventDefault();
+          showDeletePopup(event, message.text, index);
+        });
+      }
 
       messageDiv.appendChild(usernameSpan);
       messageDiv.appendChild(textSpan);
@@ -75,7 +62,7 @@ function updateChatMessages(messages) {
 
 function updateChatHeader(peer) {
   const chatHeader = document.querySelector(".chat-header h2");
-  chatHeader.textContent = `- ${peer}`;
+  chatHeader.textContent = `${peer}`;
   currentChannel = peer;
 }
 
@@ -150,14 +137,135 @@ ipcRenderer.on("fileContent", (event, file) => {
   handleFilePreview(file.fileName, file.fileContent);
 });
 
+function showWarningPopup(message) {
+  const warningPopup = document.getElementById("warning-popup");
+  const warningMessage = document.getElementById("warning-message");
+  warningMessage.textContent = message;
+  warningPopup.style.display = "block";
+}
+
+function hideWarningPopup() {
+  const warningPopup = document.getElementById("warning-popup");
+  warningPopup.style.display = "none";
+}
+
+function showEditPopup(event, messageText, messageID) {
+  const editPopup = document.getElementById("edit-popup");
+  editPopup.style.display = "block";
+  editPopup.style.left = `${event.pageX}px`;
+  editPopup.style.top = `${event.pageY}px`;
+
+  const editInput = document.getElementById("edit-message-input");
+  editInput.value = messageText;
+
+  const saveButton = document.getElementById("save-edit-button");
+  saveButton.onclick = () => {
+    const newMessageText = editInput.value.trim();
+    ipcRenderer.send("edit-message", currentChannel, messageID, newMessageText);
+    editPopup.style.display = "none";
+  };
+
+  // Close the popup when clicking outside of it
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (!editPopup.contains(e.target)) {
+        editPopup.style.display = "none";
+      }
+    },
+    { once: true }
+  );
+}
+
+function showDeletePopup(event, messageText, messageID) {
+  const deletePopup = document.getElementById("delete-popup");
+  deletePopup.style.display = "block";
+  deletePopup.style.left = `${event.pageX}px`;
+  deletePopup.style.top = `${event.pageY}px`;
+
+  const deleteButton = document.getElementById("delete-message-button");
+  deleteButton.onclick = () => {
+    ipcRenderer.send("delete-message", currentChannel, messageText, messageID);
+    deletePopup.style.display = "none";
+  };
+
+  const editButton = document.getElementById("edit-message-button");
+  editButton.onclick = () => {
+    showEditPopup(event, messageText, messageID);
+    deletePopup.style.display = "none";
+  };
+
+  // Close the popup when clicking outside of it
+  document.addEventListener(
+    "click",
+    (e) => {
+      if (!deletePopup.contains(e.target)) {
+        deletePopup.style.display = "none";
+      }
+    },
+    { once: true }
+  );
+}
+
+ipcRenderer.on("delete-message", (event, message) => {
+  const { target, messageId, from } = message;
+  if (currentChannel === from) {
+    const messagesContainer = document.getElementById("messages-container");
+    const messageDiv = document.getElementById(`message-${messageId}`);
+    if (messageDiv) {
+      messagesContainer.removeChild(messageDiv);
+    }
+  }
+
+  // Remove the message from the current channel
+  if (currChannels.has(from)) {
+    const messages = currChannels.get(from);
+    messages.splice(messageId, 1);
+    if (currentChannel === from) {
+      updateChatMessages(messages);
+    }
+  }
+});
+
+ipcRenderer.on("edit-message", (event, message) => {
+  const { target, messageId, from, newMessageText } = message;
+  if (currentChannel === from) {
+    const messagesContainer = document.getElementById("messages-container");
+    const messageDiv = document.getElementById(`message-${messageId}`);
+    if (messageDiv) {
+      const textSpan = messageDiv.querySelector(".text");
+      textSpan.textContent = newMessageText;
+    }
+  }
+
+  // Update the message in the current channel
+  if (currChannels.has(from)) {
+    const messages = currChannels.get(from);
+    const message = messages[messageId];
+    if (message) {
+      message.text = newMessageText;
+      if (currentChannel === from) {
+        updateChatMessages(messages);
+      }
+    }
+  }
+});
+
 window.addEventListener("DOMContentLoaded", () => {
   const sendMessageButton = document.getElementById("send-message");
   const messageInput = document.getElementById("message-input");
   const fileInput = document.getElementById("file-input");
+  const closeWarningButton = document.getElementById("close-warning");
 
   if (sendMessageButton) {
     sendMessageButton.addEventListener("click", () => {
-      const message = messageInput.value;
+      const message = messageInput.value.trim();
+
+      if (!currentChannel) {
+        showWarningPopup("No target peer selected.");
+        return;
+      }
+
       const files = Array.from(fileInput.files);
 
       if (files.length > 0) {
@@ -173,6 +281,10 @@ window.addEventListener("DOMContentLoaded", () => {
         };
         reader.readAsDataURL(file);
       } else {
+        if (!message) {
+          showWarningPopup("Message cannot be empty.");
+          return;
+        }
         ipcRenderer.send("send-chat-message", message);
       }
 
@@ -181,6 +293,8 @@ window.addEventListener("DOMContentLoaded", () => {
     });
   }
 
+  closeWarningButton.addEventListener("click", hideWarningPopup);
+
   if (messageInput) {
     messageInput.addEventListener("keydown", (event) => {
       if (event.key === "Enter") {
@@ -188,6 +302,12 @@ window.addEventListener("DOMContentLoaded", () => {
       }
     });
   }
+
+  // setting current-user-username to the current user's username
+  ipcRenderer.invoke("get-username").then((username) => {
+    currentUsername = username; // Set currentUsername here
+    document.getElementById("current-user-username").textContent = username;
+  });
 
   ipcRenderer.on("update-chat", (event, messages) => {
     updateChatMessages(messages);
@@ -210,30 +330,6 @@ window.addEventListener("DOMContentLoaded", () => {
       chatList.appendChild(channel);
     }
   });
-
-  // ipcRenderer.on("chat-message", (event, message) => {
-  //   const messagesContainer = document.getElementById("messages-container");
-  //   const messageDiv = document.createElement("div");
-  //   messageDiv.classList.add("message");
-
-  //   const usernameSpan = document.createElement("span");
-  //   usernameSpan.classList.add("username");
-  //   usernameSpan.textContent = `${message.from}:`;
-
-  //   const textSpan = document.createElement("span");
-  //   textSpan.classList.add("text");
-  //   textSpan.textContent = message.message;
-
-  //   messageDiv.appendChild(usernameSpan);
-  //   messageDiv.appendChild(textSpan);
-  //   messagesContainer.appendChild(messageDiv);
-  //   messagesContainer.scrollTop = messagesContainer.scrollHeight; // Scroll to the bottom
-
-  //   // // Refresh chat messages
-  //   // ipcRenderer.invoke("get-chat-messages", currentChannel).then((messages) => {
-  //   //   updateChatMessages(messages);
-  //   // });
-  // });
 
   ipcRenderer.invoke("get-peers").then((peers) => {
     updatePeersList(peers);

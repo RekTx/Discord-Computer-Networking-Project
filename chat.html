@@ -8,7 +8,7 @@
     <style>
       .messages {
         overflow-y: auto;
-        max-height: calc(100vh - 150px); /* Adjust the height as needed */
+        max-height: calc(100vh - 150px);
       }
     </style>
   </head>
@@ -17,8 +17,11 @@
       <!-- Sidebar -->
       <aside class="sidebar">
         <div class="sidebar-header">
-          <h2>WSG</h2>
+          <h2>Bak Bak</h2>
           <button class="add-group-button">+</button>
+        </div>
+        <div class="channels-header">
+          <h3>Messages and Groups</h3>
         </div>
         <ul class="channels chat-list">
           <!--dynamically adding channels here-->
@@ -67,6 +70,14 @@
         <ul>
           <!-- User list will be populated dynamically -->
         </ul>
+        <div class="current-peer">
+          <span>Current Peer:</span>
+          <span class="username" id="current-peer-username">None</span>
+        </div>
+        <div class="current-user">
+          <span>Logged in as:</span>
+          <span class="username" id="current-user-username">None</span>
+        </div>
       </aside>
     </div>
 
@@ -80,6 +91,21 @@
         </div>
         <button id="create-group">Create Group</button>
       </div>
+    </div>
+
+    <div class="warning-popup" id="warning-popup">
+      <span class="close-warning" id="close-warning">&times;</span>
+      <p id="warning-message"></p>
+    </div>
+
+    <div id="delete-popup" class="delete-popup">
+      <button id="delete-message-button">Delete Message</button>
+      <button id="edit-message-button">Edit Message</button>
+    </div>
+
+    <div id="edit-popup" class="edit-popup">
+      <input type="text" id="edit-message-input" />
+      <button id="save-edit-button">Save</button>
     </div>
   </body>
 </html>
