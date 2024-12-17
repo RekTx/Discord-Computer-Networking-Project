@@ -1,5 +1,7 @@
 // server.js
 const WebSocket = require("ws");
+const fs = require("fs");
+const path = require("path");
 
 // Create a WebSocket server on port 8081
 const wss = new WebSocket.Server({ port: 8081 });
@@ -218,6 +220,54 @@ wss.on("connection", (ws) => {
           ws.send(
             JSON.stringify({ type: "error", message: "Target peer not found" })
           );
+        }
+        break;
+
+      case "fileTransfer":
+        console.log("File transfer request received: ", data);
+        {
+          const { target, fileName, fileContent } = data;
+          const serverDir = path.join(__dirname, "p2pfiles_server");
+          const filePath = path.join(serverDir, fileName);
+
+          if (!fs.existsSync(serverDir)) {
+            fs.mkdirSync(serverDir);
+          }
+
+          fs.writeFileSync(filePath, fileContent, "base64");
+
+          if (peers.has(target)) {
+            console.log("Sending file to peer: ", target);
+            peers.get(target).send(
+              JSON.stringify({
+                type: "fileReceived",
+                from: username,
+                fileName: fileName,
+              })
+            );
+          }
+        }
+        break;
+
+      case "acceptFile":
+        console.log("File acceptance request received: ");
+        {
+          const { fileName, from } = data;
+          const filePath = path.join(__dirname, "p2pfiles_server", fileName);
+
+          if (fs.existsSync(filePath)) {
+            const fileContent = fs.readFileSync(filePath, "base64");
+            if (peers.has(username)) {
+              peers.get(username).send(
+                JSON.stringify({
+                  type: "fileContent",
+                  from: from,
+                  fileName: fileName,
+                  fileContent: fileContent,
+                })
+              );
+            }
+          }
         }
         break;
 

@@ -39,6 +39,23 @@
             placeholder="Enter your message..."
           />
           <button id="send-message">Send</button>
+          <button id="add-attachment">+</button>
+        </div>
+        <div id="selected-files" class="selected-files"></div>
+
+        <div id="file-modal" class="modal">
+          <div class="modal-content">
+            <span class="close close-file-modal">&times;</span>
+            <h2>Select Files</h2>
+            <input type="file" id="file-input" multiple />
+            <button id="confirm-file">Confirm</button>
+          </div>
+        </div>
+
+        <div id="file-preview-modal" class="file-preview-modal">
+          <div id="file-preview-content" class="file-preview-content">
+            <span class="file-preview-close">&times;</span>
+          </div>
         </div>
       </main>
 

@@ -2,6 +2,7 @@ const { app, BrowserWindow, ipcMain } = require("electron");
 const path = require("path");
 const { spawn } = require("child_process");
 const WebSocket = require("ws");
+const fs = require("fs");
 
 const currChannels = new Map();
 let currTargetPeer = "";
@@ -90,6 +91,21 @@ app.whenReady().then(() => {
         );
       }
       mainWindow.webContents.send("chat-message", message);
+    } else if (message.type === "fileReceived") {
+      console.log(`Received file from peer: ${message.from}`);
+      const file = {
+        fileName: message.fileName,
+        fileContent: message.fileContent,
+        from: message.from,
+      };
+      mainWindow.webContents.send("fileReceived", file);
+    } else if (message.type === "fileContent") {
+      console.log(`Received file content from peer: ${message.from}`);
+      const file = {
+        fileName: message.fileName,
+        fileContent: message.fileContent,
+      };
+      mainWindow.webContents.send("fileContent", file);
     }
   };
 });
@@ -190,40 +206,63 @@ ipcMain.on("switch-channel", (event, peer) => {
   mainWindow.webContents.send("update-chat", currChannels.get(peer));
 });
 
-ipcMain.on("send-chat-message", (event, message) => {
-  console.log("Sending message: ", message);
-  console.log("Current target peer: ", currTargetPeer);
-  if (ws.readyState === WebSocket.OPEN && currTargetPeer) {
-    
-    const isGroup = currTargetPeer.startsWith("group: ");
-    let tempType = "signal";
-
-    if (isGroup) {
-      tempType = "sendMessageToGroup";
-    }
-
+ipcMain.on("send-chat-message", (event, message, file) => {
+  if (file) {
+    const { fileName, fileContent } = file;
     ws.send(
       JSON.stringify({
-        type: tempType,
+        type: "fileTransfer",
         target: currTargetPeer,
-        payload: message,
+        fileName: fileName,
+        fileContent: fileContent,
       })
     );
 
-    console.log("message sent with type: ", tempType);
-    console.log("message sent to: ", currTargetPeer);
-    console.log("message sent with payload: ", message);
-
-    // Add the message to the current channel
+    // Sending message in chat saying file is sent
     if (currChannels.has(currTargetPeer)) {
       currChannels.get(currTargetPeer).push({
         from: currentUsername,
-        text: message,
+        text: "File sent: " + fileName,
       });
       mainWindow.webContents.send(
         "update-chat",
         currChannels.get(currTargetPeer)
       );
+    }
+  } else {
+    console.log("Sending message: ", message);
+    console.log("Current target peer: ", currTargetPeer);
+    if (ws.readyState === WebSocket.OPEN && currTargetPeer) {
+      const isGroup = currTargetPeer.startsWith("group: ");
+      let tempType = "signal";
+
+      if (isGroup) {
+        tempType = "sendMessageToGroup";
+      }
+
+      ws.send(
+        JSON.stringify({
+          type: tempType,
+          target: currTargetPeer,
+          payload: message,
+        })
+      );
+
+      console.log("message sent with type: ", tempType);
+      console.log("message sent to: ", currTargetPeer);
+      console.log("message sent with payload: ", message);
+
+      // Add the message to the current channel
+      if (currChannels.has(currTargetPeer)) {
+        currChannels.get(currTargetPeer).push({
+          from: currentUsername,
+          text: message,
+        });
+        mainWindow.webContents.send(
+          "update-chat",
+          currChannels.get(currTargetPeer)
+        );
+      }
     }
   }
 });
@@ -244,4 +283,43 @@ ipcMain.on("create-group", (event, group) => {
 
 ipcMain.on("add-channel", (event, peer) => {
   mainWindow.webContents.send("add-channel", peer);
+});
+
+ipcMain.handle("save-file", (event, fileName, fileContent) => {
+  const userDir = path.join(__dirname, "p2pfiles_" + currentUsername);
+  if (!fs.existsSync(userDir)) {
+    fs.mkdirSync(userDir);
+  }
+  const filePath = path.join(userDir, fileName);
+  fs.writeFileSync(filePath, fileContent, "base64");
+});
+
+ipcMain.handle("get-file-content", (event, fileName) => {
+  const filePath = path.join(
+    __dirname,
+    "p2pfiles_" + currentUsername,
+    fileName
+  );
+  if (fs.existsSync(filePath)) {
+    return fs.readFileSync(filePath, "base64");
+  }
+  return null;
+});
+
+ipcMain.handle("get-server-file-content", (event, fileName) => {
+  const filePath = path.join(__dirname, "p2pfiles_server", fileName);
+  if (fs.existsSync(filePath)) {
+    return fs.readFileSync(filePath, "base64");
+  }
+  return null;
+});
+
+ipcMain.on("accept-file", (event, fileName, from) => {
+  ws.send(
+    JSON.stringify({
+      type: "acceptFile",
+      fileName: fileName,
+      from: from,
+    })
+  );
 });
