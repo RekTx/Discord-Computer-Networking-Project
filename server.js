@@ -137,6 +137,10 @@ wss.on("connection", (ws) => {
   // Handle peer disconnecting
   ws.on("close", () => {
     if (username) {
+      // displaying all peers on the server on the console
+
+      console.log("Peers on the server: ", peers.keys());
+
       peers.delete(username);
 
       // Remove the peer from all groups

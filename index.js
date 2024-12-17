@@ -56,6 +56,41 @@ ipcMain.on("login-success", (event, username) => {
   mainWindow.setMenuBarVisibility(false);
 });
 
+ipcMain.handle("send-username", (event, username) => {
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "setUsername",
+        username: username,
+      })
+    );
+    return { success: true };
+  } else {
+    return { success: false };
+  }
+});
+
 ipcMain.handle("get-websocket", () => {
   return ws;
+});
+
+ipcMain.handle("get-peers", async () => {
+  console.log("get-peers");
+  if (ws.readyState === WebSocket.OPEN) {
+    console.log("get-peers, websocket open");
+    ws.send(JSON.stringify({ type: "getPeers" }));
+    console.log("get-peers, ws.send");
+    return new Promise((resolve) => {
+      ws.onmessage = (event) => {
+        console.log("get-peers, onmessage");
+        const message = JSON.parse(event.data);
+        if (message.type === "peersList") {
+          console.log("Peers on the server: ", peers.keys());
+          resolve(message.peers);
+        }
+      };
+    });
+  } else {
+    return [];
+  }
 });
