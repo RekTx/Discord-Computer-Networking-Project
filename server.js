@@ -29,7 +29,7 @@ const transporter = nodemailer.createTransport({
 
 function sendOTP(email, otp) {
   const mailOptions = {
-    from: "hashkiller1214@gmail.com",
+    from: "your gmail@gmail.com",
     to: email,
     subject: "Your OTP for Bak Bak",
     text: `Your OTP is ${otp}`,
