@@ -22,6 +22,20 @@ function broadcastPeersList() {
   });
 }
 
+function notifyGroupMembers(groupName, members) {
+  members.forEach((member) => {
+    const memberSocket = peers.get(member);
+    if (memberSocket) {
+      memberSocket.send(
+        JSON.stringify({
+          type: "groupCreated",
+          groupName,
+        })
+      );
+    }
+  });
+}
+
 // Handle WebSocket connections
 wss.on("connection", (ws) => {
   let username = null;
@@ -59,7 +73,14 @@ wss.on("connection", (ws) => {
 
       case "createGroup":
         // Create a new group with the specified name and members
-        const { groupName, members } = data;
+        console.log(`Creating group with data:`, data);
+        const { groupName, selectedPeers } = data;
+
+        console.log(
+          `Creating group '${groupName}' with members:`,
+          selectedPeers
+        );
+
         if (groups.has(groupName)) {
           ws.send(
             JSON.stringify({
@@ -69,12 +90,15 @@ wss.on("connection", (ws) => {
           );
         } else {
           // Add the creator to the group if not already included
-          if (!members.includes(username)) {
-            members.push(username);
+          if (!selectedPeers.includes(username)) {
+            selectedPeers.push(username);
           }
-          groups.set(groupName, members);
-          console.log(`Group '${groupName}' created with members: ${members}`);
+          groups.set(groupName, selectedPeers);
+          console.log(
+            `Group '${groupName}' created with members: ${selectedPeers}`
+          );
           ws.send(JSON.stringify({ type: "groupCreated", groupName }));
+          notifyGroupMembers(groupName, selectedPeers); // Notify all group members
         }
         break;
 

@@ -118,4 +118,76 @@ window.addEventListener("DOMContentLoaded", () => {
   ipcRenderer.on("update-peers", (event, peers) => {
     updatePeersList(peers);
   });
+
+  ipcRenderer.on("groupCreated", (event, groupName) => {
+    const chatList = document.querySelector(".chat-list");
+    const existingChannel = Array.from(chatList.children).find(
+      (channel) => channel.textContent === groupName
+    );
+
+    if (!existingChannel) {
+      const channel = document.createElement("li");
+      channel.textContent = groupName;
+      channel.classList.add("channel");
+      channel.addEventListener("click", () => {
+        ipcRenderer.send("switch-channel", groupName);
+        updateChatHeader(groupName); // Update chat header when switching channels
+      });
+      chatList.appendChild(channel);
+    }
+  });
+
+  const addGroupButton = document.querySelector(".add-group-button");
+  const modal = document.getElementById("group-modal");
+  const closeModal = document.querySelector(".close");
+  const createGroupButton = document.getElementById("create-group");
+
+  addGroupButton.addEventListener("click", () => {
+    modal.style.display = "block";
+    populatePeersList();
+  });
+
+  closeModal.addEventListener("click", () => {
+    modal.style.display = "none";
+  });
+
+  window.addEventListener("click", (event) => {
+    if (event.target == modal) {
+      modal.style.display = "none";
+    }
+  });
+
+  createGroupButton.addEventListener("click", () => {
+    const groupName = document.getElementById("group-name").value;
+    const selectedPeers = Array.from(
+      document.querySelectorAll("#peers-list input[type='checkbox']:checked")
+    ).map((checkbox) => checkbox.value);
+    ipcRenderer.send("create-group", {
+      groupName: groupName,
+      sPeers: selectedPeers,
+    });
+    modal.style.display = "none";
+  });
+
+  function populatePeersList() {
+    ipcRenderer.invoke("get-peers").then((peers) => {
+      const peersList = document.getElementById("peers-list");
+      peersList.innerHTML = "";
+      peers.forEach((peer) => {
+        const peerItem = document.createElement("div");
+        peerItem.classList.add("peer-item");
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.value = peer;
+
+        const label = document.createElement("label");
+        label.textContent = peer;
+
+        peerItem.appendChild(checkbox);
+        peerItem.appendChild(label);
+        peersList.appendChild(peerItem);
+      });
+    });
+  }
 });

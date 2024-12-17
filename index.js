@@ -73,6 +73,8 @@ app.whenReady().then(() => {
         );
       }
       mainWindow.webContents.send("chat-message", message);
+    } else if (message.type === "groupCreated") {
+      mainWindow.webContents.send("groupCreated", message.groupName);
     }
   };
 });
@@ -197,6 +199,20 @@ ipcMain.on("send-chat-message", (event, message) => {
         currChannels.get(currTargetPeer)
       );
     }
+  }
+});
+
+ipcMain.on("create-group", (event, group) => {
+  console.log("Creating group: ", group);
+
+  if (ws.readyState === WebSocket.OPEN) {
+    ws.send(
+      JSON.stringify({
+        type: "createGroup",
+        groupName: group.groupName,
+        selectedPeers: group.sPeers,
+      })
+    );
   }
 });
 
