@@ -22,8 +22,8 @@ console.log("Server is running on ws://localhost:8081");
 const transporter = nodemailer.createTransport({
   service: "gmail",
   auth: {
-    user: "hashkiller1214@gmail.com",
-    pass: "invi ffjs anxh zvly",
+    user: "your gmail@gmail.com",
+    pass: "your app pass",
   },
 });
 
